@@ -37,9 +37,17 @@ class GmailService:
                 # Check if we're in a headless environment
                 import os
                 if os.getenv('DISPLAY') is None or os.getenv('SSH_CONNECTION') is not None:
-                    # Headless/SSH environment - use console flow
-                    logger.info("Detected headless environment, using console authentication flow...")
-                    creds = flow.run_console()
+                    # Headless/SSH environment - manual flow
+                    logger.info("Detected headless environment, using manual authentication flow...")
+                    flow.redirect_uri = 'urn:ietf:wg:oauth:2.0:oob'
+                    auth_url, _ = flow.authorization_url(prompt='consent')
+                    print(f"\nPlease visit this URL to authorize this application:")
+                    print(f"{auth_url}\n")
+                    print("After authorizing, you'll see a page with an authorization code.")
+                    print("Copy the entire code and paste it below.\n")
+                    auth_code = input("Enter the authorization code: ").strip()
+                    flow.fetch_token(code=auth_code)
+                    creds = flow.credentials
                 else:
                     # GUI environment - use local server
                     creds = flow.run_local_server(port=0)

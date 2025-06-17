@@ -57,11 +57,49 @@ def setup_gmail_headless():
             Config.GMAIL_SCOPES
         )
         
+        # Detect credential type and use optimal method
+        import json
+        with open(Config.GMAIL_CLIENT_SECRET_FILE, 'r') as f:
+            cred_data = json.load(f)
+        
+        client_type = cred_data.get('installed', {}).get('client_id', None)
+        if client_type:
+            logger.info("✅ Detected: DESKTOP application credentials (optimal)")
+            credential_type = "desktop"
+        else:
+            logger.info("⚠️ Detected: WEB application credentials (using workaround)")
+            credential_type = "web"
+            flow.redirect_uri = 'urn:ietf:wg:oauth:2.0:oob'
+        
         logger.info("🔗 Please follow these steps:")
         logger.info("=" * 60)
         
-        # Start the console flow
-        creds = flow.run_console()
+        # Get the authorization URL
+        auth_url, _ = flow.authorization_url(prompt='consent')
+        
+        print(f"Please visit this URL to authorize this application:")
+        print(f"{auth_url}")
+        print()
+        
+        if credential_type == "desktop":
+            print("✅ Using desktop application flow (recommended)")
+            print("After authorizing, you'll see a page with an authorization code.")
+        else:
+            print("⚠️ Using web application workaround")
+            print("After authorizing, you'll see a page with an authorization code.")
+            print("📋 Tip: For better experience, create 'Desktop application' credentials instead of 'Web application'")
+        
+        print("Copy the entire code and paste it below.")
+        print()
+        
+        # Get the authorization code from the user
+        auth_code = input("Enter the authorization code: ").strip()
+        
+        # Exchange the authorization code for credentials
+        flow.fetch_token(code=auth_code)
+        creds = flow.credentials
+        
+        logger.info(f"🎉 Authentication successful using {credential_type} credentials!")
         
         # Save the credentials
         with open(Config.GMAIL_TOKEN_FILE, 'w') as token:
